@@ -171,7 +171,7 @@ export function listPayments(params: Record<string, string | number | undefined>
  * Uses fetch directly because apiFetch parses JSON.
  */
 export async function downloadCsv(path: string, filename: string) {
-  const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:5000";
+  const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "https://clickbook-backend-production.up.railway.app";
   const token = typeof window !== "undefined"
     ? sessionStorage.getItem("auth_token") ?? localStorage.getItem("auth_token")
     : null;

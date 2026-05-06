@@ -4,7 +4,7 @@
  */
 import { ApiError, apiFetch } from "@/lib/api";
 
-const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:5000";
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "https://clickbook-backend-production.up.railway.app";
 
 export interface MediaAsset {
   id: string;
