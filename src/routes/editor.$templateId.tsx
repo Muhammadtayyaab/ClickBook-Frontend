@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft, Undo2, Redo2, Monitor, Tablet, Smartphone, Eye, Save, Rocket, Sparkles,
-  ChevronUp, ChevronDown, Copy, Trash2, Layers, FileText, ExternalLink,
+  ChevronUp, ChevronDown, Copy, Trash2, Layers, FileText, ExternalLink, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useActiveSections, useAnyDirty, useEditor, type PageSlug } from "@/stores/editor-store";
@@ -85,6 +85,7 @@ function EditorPage() {
   const [publishing, setPublishing] = useState(false);
   const [publishedId, setPublishedId] = useState<string | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const didAutoPublish = useRef(false);
   // Used by the interval to read fresh state without re-subscribing.
   const stateRef = useRef({ siteId: storeSiteId, pages, siteName, themeColor, metaDirty: useEditor.getState().metaDirty });
@@ -309,7 +310,7 @@ function EditorPage() {
               </Link>
             </Button>
           )}
-          <Button variant="ghost" size="sm" className="hidden sm:inline-flex" onClick={() => window.open(`/site/${storeSiteId ?? ""}`, "_blank")} disabled={!publishedId}>
+          <Button variant="ghost" size="sm" className="hidden sm:inline-flex" onClick={() => setPreviewOpen(true)}>
             <Eye className="mr-1 h-4 w-4" /> Preview
           </Button>
           <Button variant="outline" size="sm" onClick={() => handleSave()} disabled={saving || !storeSiteId}>
@@ -397,6 +398,7 @@ function EditorPage() {
         </aside>
       </div>
 
+      <PreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} />
       <SectionPickerDrawer open={pickerOpen} onClose={() => setPickerOpen(false)} />
       <UpgradeDialog
         open={upgradeOpen}
@@ -496,6 +498,120 @@ function PagesPanel() {
           {p.dirty && <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />}
         </button>
       ))}
+    </div>
+  );
+}
+
+function PreviewModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { pages, siteName, themeColor } = useEditor();
+  const [activeSlug, setActiveSlug] = useState<PageSlug>(() => {
+    const home = pages.find((p) => p.is_homepage) ?? pages[0];
+    return (home?.slug as PageSlug) ?? "home";
+  });
+  const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
+
+  useEffect(() => {
+    if (!open) return;
+    const home = pages.find((p) => p.is_homepage) ?? pages[0];
+    if (home) setActiveSlug(home.slug as PageSlug);
+  }, [open, pages]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  const activePage = useMemo(
+    () => pages.find((p) => p.slug === activeSlug) ?? pages[0] ?? null,
+    [pages, activeSlug],
+  );
+
+  if (!open) return null;
+
+  const sections = (activePage?.sections ?? []).filter((s) => s.visible !== false);
+  const themeStyle = themeStyleVars(themeColor);
+  const frameWidth =
+    device === "desktop" ? "max-w-full" : device === "tablet" ? "max-w-[820px]" : "max-w-[400px]";
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-hero text-primary-foreground">
+            <Eye className="h-3.5 w-3.5" />
+          </div>
+          <span className="truncate text-sm font-semibold">{siteName || "Preview"}</span>
+          <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
+            Draft preview
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <div className="hidden items-center gap-0.5 rounded-md border border-border bg-muted/40 p-0.5 sm:flex">
+            {([
+              ["desktop", Monitor],
+              ["tablet", Tablet],
+              ["mobile", Smartphone],
+            ] as const).map(([d, Icon]) => (
+              <button
+                key={d}
+                onClick={() => setDevice(d)}
+                aria-label={d}
+                className={`flex h-7 w-8 items-center justify-center rounded ${
+                  device === d ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={onClose}>
+            <X className="mr-1 h-4 w-4" /> Close
+          </Button>
+        </div>
+      </header>
+
+      {pages.length > 1 && (
+        <div className="flex items-center gap-1 border-b border-border bg-background px-3 py-1.5 overflow-x-auto">
+          {pages.map((p) => (
+            <button
+              key={p.slug}
+              onClick={() => setActiveSlug(p.slug as PageSlug)}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                activeSlug === p.slug
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              {p.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto bg-muted/30" style={themeStyle}>
+        <div className={`mx-auto my-6 overflow-hidden rounded-xl border border-border bg-background shadow-md transition-all ${frameWidth}`}>
+          {sections.length === 0 ? (
+            <div className="flex h-[60vh] flex-col items-center justify-center text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+                <Layers className="h-7 w-7 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold">This page is empty</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Add sections in the editor to see them here.</p>
+            </div>
+          ) : (
+            sections.map((s) => <SectionRenderer key={s.id} section={s} />)
+          )}
+        </div>
+      </div>
     </div>
   );
 }
