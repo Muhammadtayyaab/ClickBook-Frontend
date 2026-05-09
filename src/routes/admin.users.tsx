@@ -73,6 +73,8 @@ function UsersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
+  const [suspendTarget, setSuspendTarget] = useState<AdminUser | null>(null);
+  const [suspendBusy, setSuspendBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -98,18 +100,31 @@ function UsersPage() {
     return () => clearTimeout(t);
   }, [load]);
 
-  async function handleSuspendToggle(user: AdminUser) {
-    try {
-      if (user.is_active) {
-        await suspendUser(user.id);
-        toast.success(`${user.name} suspended`);
-      } else {
-        await activateUser(user.id);
+  function handleSuspendToggle(user: AdminUser) {
+    if (user.is_active) {
+      setSuspendTarget(user);
+      return;
+    }
+    activateUser(user.id)
+      .then(() => {
         toast.success(`${user.name} activated`);
-      }
+        load();
+      })
+      .catch((err) => toast.error(err instanceof Error ? err.message : "Action failed"));
+  }
+
+  async function confirmSuspend() {
+    if (!suspendTarget) return;
+    setSuspendBusy(true);
+    try {
+      await suspendUser(suspendTarget.id);
+      toast.success(`${suspendTarget.name} suspended`);
+      setSuspendTarget(null);
       load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Action failed");
+    } finally {
+      setSuspendBusy(false);
     }
   }
 
@@ -283,6 +298,43 @@ function UsersPage() {
         user={editUser}
         onSaved={load}
       />
+
+      <AlertDialog
+        open={!!suspendTarget}
+        onOpenChange={(open) => !open && !suspendBusy && setSuspendTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Suspend {suspendTarget?.name}?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>The user will be signed out and the following will apply until you reactivate them:</p>
+                <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+                  <li>Sign-in is blocked and active sessions are revoked.</li>
+                  <li>Editor and dashboard become read-only — no publishing or domain changes.</li>
+                  <li>Published sites stay online for visitors.</li>
+                  <li>Billing renewals are paused.</li>
+                  <li>An audit log entry is recorded.</li>
+                </ul>
+                <p>You can reactivate them at any time.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={suspendBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                confirmSuspend();
+              }}
+              disabled={suspendBusy}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {suspendBusy ? "Suspending…" : "Suspend user"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
