@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Github, Twitter, Linkedin, Sparkles } from "lucide-react";
 import { APP_NAME, APP_COPYRIGHT } from "@/lib/brand";
@@ -17,19 +18,7 @@ export function SiteFooter() {
             <p className="mt-4 max-w-sm text-sm text-muted-foreground">
               The fastest way to design, customize, and launch your website. No code required.
             </p>
-            <form
-              className="mt-6 flex max-w-sm gap-2"
-              onSubmit={(e) => e.preventDefault()}
-            >
-              <input
-                type="email"
-                placeholder="you@company.com"
-                className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              />
-              <button className="h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background hover:opacity-90">
-                Subscribe
-              </button>
-            </form>
+            <NewsletterForm />
           </div>
           {[
             { title: "Product", links: ["Templates", "Editor", "Pricing", "Changelog"] },
@@ -58,5 +47,58 @@ export function SiteFooter() {
         </div>
       </div>
     </footer>
+  );
+}
+
+function NewsletterForm() {
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [subscribed, setSubscribed] = useState(false);
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const value = email.trim();
+    if (!value) {
+      setError("Email is required.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setError("Enter a valid email.");
+      return;
+    }
+    setError(null);
+    setSubscribed(true);
+    setEmail("");
+  }
+
+  return (
+    <form className="mt-6 max-w-sm" onSubmit={onSubmit} noValidate>
+      <div className="flex gap-2">
+        <input
+          type="email"
+          placeholder="you@company.com"
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            if (error) setError(null);
+            if (subscribed) setSubscribed(false);
+          }}
+          aria-invalid={!!error}
+          className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        />
+        <button
+          type="submit"
+          className="h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background hover:opacity-90"
+        >
+          Subscribe
+        </button>
+      </div>
+      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+      {!error && subscribed && (
+        <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">
+          Thanks — you're subscribed.
+        </p>
+      )}
+    </form>
   );
 }

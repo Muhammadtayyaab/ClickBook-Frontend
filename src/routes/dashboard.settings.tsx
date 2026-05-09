@@ -51,6 +51,11 @@ function SettingsPage() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileErr, setProfileErr] = useState<string | null>(null);
   const [profileOk, setProfileOk] = useState<string | null>(null);
+  const [profileFieldErrors, setProfileFieldErrors] = useState<{
+    name?: string;
+    email?: string;
+    avatar_url?: string;
+  }>({});
 
   async function loadPayments() {
     try {
@@ -82,8 +87,29 @@ function SettingsPage() {
     setProfileAvatarUrl(user?.avatar_url ?? "");
   }, [user?.name, user?.email, user?.avatar_url]);
 
+  function validateProfile() {
+    const errs: { name?: string; email?: string; avatar_url?: string } = {};
+    if (profileName.trim().length < 2) errs.name = "Name must be at least 2 characters.";
+    if (!profileEmail.trim()) errs.email = "Email is required.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileEmail.trim()))
+      errs.email = "Enter a valid email.";
+    if (profileAvatarUrl.trim()) {
+      try {
+        const u = new URL(profileAvatarUrl.trim());
+        if (u.protocol !== "http:" && u.protocol !== "https:")
+          errs.avatar_url = "Avatar URL must start with http(s)://";
+      } catch {
+        errs.avatar_url = "Enter a valid URL.";
+      }
+    }
+    return errs;
+  }
+
   async function saveProfile() {
     if (!user) return;
+    const errs = validateProfile();
+    setProfileFieldErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     setProfileSaving(true);
     setProfileErr(null);
     setProfileOk(null);
@@ -119,9 +145,17 @@ function SettingsPage() {
             <Input
               id="name"
               value={profileName}
-              onChange={(e) => setProfileName(e.target.value)}
+              onChange={(e) => {
+                setProfileName(e.target.value);
+                if (profileFieldErrors.name)
+                  setProfileFieldErrors((p) => ({ ...p, name: undefined }));
+              }}
               autoComplete="name"
+              aria-invalid={!!profileFieldErrors.name}
             />
+            {profileFieldErrors.name && (
+              <p className="text-xs text-destructive">{profileFieldErrors.name}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -129,19 +163,35 @@ function SettingsPage() {
               id="email"
               type="email"
               value={profileEmail}
-              onChange={(e) => setProfileEmail(e.target.value)}
+              onChange={(e) => {
+                setProfileEmail(e.target.value);
+                if (profileFieldErrors.email)
+                  setProfileFieldErrors((p) => ({ ...p, email: undefined }));
+              }}
               autoComplete="email"
+              aria-invalid={!!profileFieldErrors.email}
             />
+            {profileFieldErrors.email && (
+              <p className="text-xs text-destructive">{profileFieldErrors.email}</p>
+            )}
           </div>
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="avatar">Avatar URL</Label>
             <Input
               id="avatar"
               value={profileAvatarUrl ?? ""}
-              onChange={(e) => setProfileAvatarUrl(e.target.value)}
+              onChange={(e) => {
+                setProfileAvatarUrl(e.target.value);
+                if (profileFieldErrors.avatar_url)
+                  setProfileFieldErrors((p) => ({ ...p, avatar_url: undefined }));
+              }}
               placeholder="https://..."
               autoComplete="url"
+              aria-invalid={!!profileFieldErrors.avatar_url}
             />
+            {profileFieldErrors.avatar_url && (
+              <p className="text-xs text-destructive">{profileFieldErrors.avatar_url}</p>
+            )}
           </div>
         </div>
         <div className="mt-3 flex items-center justify-between gap-3">
@@ -216,8 +266,16 @@ function ChangePasswordDialog({ open, onClose }: { open: boolean; onClose: () =>
   async function submit() {
     setErr(null);
     setOk(null);
-    if (!current || !next) {
+    if (!current || !next || !confirm) {
       setErr("Please fill in all fields.");
+      return;
+    }
+    if (next.length < 8) {
+      setErr("New password must be at least 8 characters.");
+      return;
+    }
+    if (next === current) {
+      setErr("New password must be different from your current password.");
       return;
     }
     if (next !== confirm) {

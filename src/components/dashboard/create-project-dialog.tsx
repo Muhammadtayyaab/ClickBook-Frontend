@@ -31,6 +31,7 @@ export function CreateProjectDialog({ open, onClose, onCreated, presetTemplateId
   const [templates, setTemplates] = useState<BackendTemplate[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [name, setName] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export function CreateProjectDialog({ open, onClose, onCreated, presetTemplateId
     if (!open) {
       setSelected(null);
       setName("");
+      setNameError(null);
       setSubmitting(false);
     }
   }, [open]);
@@ -60,7 +62,20 @@ export function CreateProjectDialog({ open, onClose, onCreated, presetTemplateId
       toast.error("Pick a template first");
       return;
     }
-    const trimmed = name.trim() || "Untitled project";
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setNameError("Project name is required.");
+      return;
+    }
+    if (trimmed.length < 2) {
+      setNameError("Project name must be at least 2 characters.");
+      return;
+    }
+    if (trimmed.length > 80) {
+      setNameError("Project name must be 80 characters or fewer.");
+      return;
+    }
+    setNameError(null);
     setSubmitting(true);
     try {
       const project = await createProject({ template_id: selected, name: trimmed });
@@ -96,10 +111,15 @@ export function CreateProjectDialog({ open, onClose, onCreated, presetTemplateId
             <Input
               id="project-name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (nameError) setNameError(null);
+              }}
               placeholder="My new website"
               autoFocus
+              aria-invalid={!!nameError}
             />
+            {nameError && <p className="text-xs text-destructive">{nameError}</p>}
           </div>
 
           <div>

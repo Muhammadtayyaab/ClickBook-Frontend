@@ -28,18 +28,35 @@ export const Route = createFileRoute("/signin")({
   component: SignInPage,
 });
 
+interface SignInFieldErrors {
+  email?: string;
+  password?: string;
+}
+
+function validateSignIn(email: string, password: string): SignInFieldErrors {
+  const errors: SignInFieldErrors = {};
+  if (!email.trim()) errors.email = "Email is required.";
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) errors.email = "Enter a valid email.";
+  if (!password) errors.password = "Password is required.";
+  return errors;
+}
+
 function SignInPage() {
   const navigate = useNavigate();
   const { redirect, intent } = useSearch({ from: "/signin" });
   const login = useAuthStore((s) => s.login);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<SignInFieldErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    const v = validateSignIn(email, password);
+    setErrors(v);
+    if (Object.keys(v).length > 0) return;
     setLoading(true);
     try {
       const user = await login(email, password);
@@ -73,7 +90,7 @@ function SignInPage() {
         <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
           <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
           <p className="mt-2 text-sm text-muted-foreground">Sign in to continue building.</p>
-          <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -82,9 +99,14 @@ function SignInPage() {
                 autoComplete="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (errors.email) setErrors((p) => ({ ...p, email: undefined }));
+                }}
                 placeholder="you@example.com"
+                aria-invalid={!!errors.email}
               />
+              {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -102,9 +124,14 @@ function SignInPage() {
                 autoComplete="current-password"
                 required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (errors.password) setErrors((p) => ({ ...p, password: undefined }));
+                }}
                 placeholder="••••••••"
+                aria-invalid={!!errors.password}
               />
+              {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
             </div>
             {error && (
               <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">

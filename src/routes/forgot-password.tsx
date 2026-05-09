@@ -19,12 +19,22 @@ export const Route = createFileRoute("/forgot-password")({
 
 function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [resetLink, setResetLink] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  function validateEmail(value: string): string | null {
+    if (!value.trim()) return "Email is required.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return "Enter a valid email.";
+    return null;
+  }
+
   async function sendResetEmail() {
+    const v = validateEmail(email);
+    setEmailError(v);
+    if (v) return;
     setError(null);
     setMessage(null);
     setResetLink(null);
@@ -62,7 +72,7 @@ function ForgotPasswordPage() {
           <p className="mt-2 text-sm text-muted-foreground">
             Enter your email and we'll send you a link to reset it.
           </p>
-          <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -71,9 +81,14 @@ function ForgotPasswordPage() {
                 autoComplete="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (emailError) setEmailError(null);
+                }}
                 placeholder="you@example.com"
+                aria-invalid={!!emailError}
               />
+              {emailError && <p className="text-xs text-destructive">{emailError}</p>}
             </div>
             {error && (
               <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
