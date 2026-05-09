@@ -39,7 +39,7 @@ export function SectionRenderer({ section, siteId }: { section: SectionDef; site
     case "hero":
       return (
         <section
-          className="relative overflow-hidden bg-gradient-hero text-primary-foreground"
+          className="relative overflow-hidden bg-gradient-hero text-white"
           style={{
             ...inline,
             ...(d.bgImage ? { backgroundImage: `linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4)), url(${d.bgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : {}),
@@ -47,15 +47,15 @@ export function SectionRenderer({ section, siteId }: { section: SectionDef; site
         >
           <div className={`${cont} ${align}`}>
             {d.eyebrow && (
-              <span className="inline-flex rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur">
+              <span className="inline-flex rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur">
                 {d.eyebrow}
               </span>
             )}
-            <h1 className="mt-5 text-4xl font-bold tracking-tight sm:text-6xl">{d.headline}</h1>
+            <h1 className="mt-5 text-4xl font-bold tracking-tight text-white sm:text-6xl">{d.headline}</h1>
             <p className={`mt-5 max-w-2xl text-lg text-white/85 ${st?.align === "center" || !st?.align ? "mx-auto" : ""}`}>{d.subheadline}</p>
             <div className={`mt-8 flex flex-wrap gap-3 ${st?.align === "center" || !st?.align ? "justify-center" : st?.align === "right" ? "justify-end" : ""}`}>
               {d.ctaPrimary && (
-                <button className="h-11 rounded-lg bg-white px-6 text-sm font-semibold text-foreground shadow-lg hover:opacity-95">
+                <button className="h-11 rounded-lg bg-white px-6 text-sm font-semibold text-slate-900 shadow-lg hover:opacity-95">
                   {d.ctaPrimary}
                 </button>
               )}
